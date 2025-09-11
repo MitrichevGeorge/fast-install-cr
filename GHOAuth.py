@@ -1,5 +1,4 @@
 import os
-import json
 import socket
 import requests
 import webbrowser
@@ -7,21 +6,19 @@ import threading
 from flask import Flask, request
 from github import Github
 from werkzeug.serving import make_server
+from pathlib import Path
+from dotenv import load_dotenv
 
+load_dotenv()
+
+CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+REDIRECT_URI = "http://localhost:8000/callback"
 
 def run_github_auth():
-    CLIENT_ID = "Ov23licaYaAFmAgwN3p0"
-    CLIENT_SECRET = "d2af713c5f91e70882f73c2b33d20c35229f6d4a"
-    REDIRECT_URI = "http://localhost:8000/callback"
-    TOKEN_FILE = "token.json"
-
     app = Flask(__name__)
     token_data = {"access_token": None}
     done_event = threading.Event()
-
-    def save_token(token: str):
-        with open(TOKEN_FILE, "w") as f:
-            json.dump({"access_token": token}, f)
 
     def get_local_ip():
         try:
@@ -34,7 +31,7 @@ def run_github_auth():
             return "127.0.0.1"
 
     auth_url = (
-        "https://github.com/login/oauth/authorize"
+        f"https://github.com/login/oauth/authorize"
         f"?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=repo"
     )
 
@@ -43,10 +40,8 @@ def run_github_auth():
             self.srv = make_server("127.0.0.1", 8000, app)
             self.ctx = app.app_context()
             self.ctx.push()
-
         def serve_forever(self):
             self.srv.serve_forever()
-
         def shutdown(self):
             self.srv.shutdown()
 
@@ -68,12 +63,9 @@ def run_github_auth():
         token = r.json().get("access_token")
         if token:
             token_data["access_token"] = token
-            save_token(token)
-
             g = Github(token)
             user = g.get_user()
-            for repo in user.get_repos():
-                print(f"{repo.name} -> {repo.clone_url}")
+            print(f"Авторизация GitHub успешна. Пользователь: {user.login}")
 
         done_event.set()
         threading.Thread(target=server.shutdown).start()
@@ -83,9 +75,8 @@ def run_github_auth():
     flask_thread.start()
 
     try:
-        if webbrowser.get():
-            webbrowser.open(auth_url)
-            print("Открываем браузер для авторизации...")
+        webbrowser.open(auth_url)
+        print("Открываем браузер для авторизации...")
     except webbrowser.Error:
         local_ip = get_local_ip()
         print("Не удалось открыть браузер автоматически.")
@@ -94,9 +85,7 @@ def run_github_auth():
 
     done_event.wait()
     flask_thread.join()
-
     return token_data["access_token"]
-
 
 if __name__ == "__main__":
     token = run_github_auth()
