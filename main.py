@@ -2,10 +2,18 @@ import json
 from pathlib import Path
 from GHOAuth import run_github_auth
 from prompt_toolkit.shortcuts import button_dialog, radiolist_dialog
-from github import Github
+from github import Github, Auth
 
 TOKEN_FILE = Path.home() / ".config" / "myapp" / "token.json"
 TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+def bad_token(token):
+    try:
+        g = Github(auth=Auth.Token(token))
+        g.get_user().login
+        return False
+    except:
+        return True
 
 def save_token(token_data):
     with open(TOKEN_FILE, "w") as f:
@@ -19,7 +27,7 @@ def load_token():
     
 def main():
     token = load_token()
-    if (token is None) or Github(token).get_user() is None:
+    if (token is None) or bad_token(token):
         token = run_github_auth()
         save_token(token)
 
