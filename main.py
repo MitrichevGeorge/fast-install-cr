@@ -31,7 +31,12 @@ def main():
         token = run_github_auth()
         save_token(token)
 
-    
+    g = Github(auth=Auth.Token(token))
+    opt = [(1, "Использовать существующий репозиторий"), (2, "Создать новый репозиторий"), (3, "Выйти")]
+    q = button_dialog(title = "Генератор установочных .sh", text = f"Вы вошли в github как {g.get_user().name}", buttons=opt)
+    if q == 1:
+        sel = radiolist_dialog(title="выберите репозиторий", values=[(i.name, i.name) for i in g.get_user().get_repos()]).run()
+        
 
 if __name__ == "__main__":
     main()
